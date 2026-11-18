@@ -41,26 +41,26 @@ pipeline {
                     '''
                 }
             }
+        }        
+stage('Deploy to AWS EC2') {
+    steps {
+        withCredentials([sshUserPrivateKey(
+            credentialsId: 'ec2-ssh-key',
+            keyFileVariable: 'SSH_KEY',
+            usernameVariable: 'SSH_USER'
+        )]) {
+            sh '''
+                ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$SSH_USER@$EC2_HOST" "
+                    sudo docker pull ${DOCKER_IMAGE}:latest &&
+                    (sudo docker rm -f devops-webapp || true) &&
+                    sudo docker run -d --restart unless-stopped \
+                    --name devops-webapp -p 80:8090 ${DOCKER_IMAGE}:latest
+                "
+            '''
         }
+    }
+}
 
-        stage('Deploy to AWS EC2') {
-            steps {
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'ec2-ssh-key',
-                    keyFileVariable: 'SSH_KEY',
-                    usernameVariable: 'SSH_USER'
-                )]) {
-                    sh '''
-                        ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no $SSH_USER@$EC2_HOST '
-                            sudo docker pull ${DOCKER_IMAGE}:latest &&
-                            (sudo docker rm -f devops-webapp || true) &&
-                            sudo docker run -d --restart unless-stopped \
-                            --name devops-webapp -p 80:8090 ${DOCKER_IMAGE}:latest
-                        '
-                    '''
-                }
-            }
-        }
     }
 
     post {
